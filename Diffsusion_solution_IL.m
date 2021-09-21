@@ -1,7 +1,8 @@
-function [k_data, ek_data, paras] = Diffsusion_solution_IL(x, C, C1, C2, C3, type, flat, weights)
+function [k_data, ek_data, paras, isC0] = Diffsusion_solution_IL(x, C, C1, C2, C3, type, flat, weights)
 %% curve fit
 % [x,I]=sort(x);
 % C=C(I);
+isC0=1; %appropriate C0 range when no flat peak/trough in profile I-L
 if flat
     C0=C2;
 else
@@ -63,14 +64,21 @@ paras=[C_data, x0_data, h_data, R2];
 % plot figure-------------------------------------
 figure
 plot(R2, '-b.')
+ylabel('R^{2}')
 yyaxis right
 plot(x0_data, '-r.')
+ylabel('x0')
 legend({'R2','x0'})
-title('Estimate x0')
+title('Estimate x0 in profile I-L')
 xlabel('Trials')
+yyaxis left
 
+%last caculation result----------------------------
+k_data(1:end-1)=[];
+ek_data(1:end-1)=[];
+paras(1:end-1,:)=[];
+% plot figure
 if flat
-    %last caculation result----------------------------
     figure
     x_p=linspace(min(x1),max(x1),100);
     [~, C_pred] = predint(fitresult, x_p);
@@ -85,12 +93,10 @@ if flat
     ym=h.YLim;
     plot([x0,x0], ym, '--')
     hold off
-    legend('raw data', ['curve fit, R2 = ', num2str(gof.rsquare)], 'x0 position');
+    legend('raw data', ['curve fit, R2 = ', num2str(gof.rsquare)], ['x0 = ', num2str(x0)]);
     xlabel( 'X (m)' );
     ylabel( 'Concentration' );
-    title({['C0 = ', num2str(C0)]; ...
-        ['h = ', num2str(h_data(end))]; ...
-        ['x0 = ', num2str(x0)]})
+    title('Curve fitting')
     return
 end
 %% before estimate t
@@ -98,6 +104,7 @@ answer = questdlg('There is no flat peak or trough (C0) defined in the diffusion
 	'Question', ...
 	'Continue','Cancel','Cancel');
 if strcmp(answer, 'Cancel')
+    isC0=0;
     return
 end
 % opts.Resize='on';
@@ -105,30 +112,36 @@ opts.Interpreter='tex';
 answer=inputdlg({'Min value of C0','Max value of C0', 'Step length (\DeltaC)'},'Input the range of C0', [1,50], {'','',''}, opts);
 rangedata=cell2num(answer);
 if isempty(answer)
+    isC0=0;
     return
 end
 if ~isnan(rangedata(1)) && ~isnan(rangedata(2)) && ~isnan(rangedata(3))
     if strcmp(type, 'I') || strcmp(type, 'K') %high value in the region
         if rangedata(1)<C0
             errordlg(['The min value should be greater than ', num2str(C0)])
+            isC0=0;
             return
         end
     else %low value in the region
         if rangedata(1)<0
             errordlg('The min value should be greater than 0')
+            isC0=0;
             return
         end
         if rangedata(2)>C0
             errordlg(['The max value should be less than ', num2str(C0)])
+            isC0=0;
             return
         end
     end
     if rangedata(3)<0
             errordlg('The step length should be greater than 0')
+            isC0=0;
             return
     end
 else
-    errordlg('Please input a proper concentration range and step length')
+    errordlg('Please input an appropriate concentration range and step length')
+    isC0=0;
     return
 end
 
@@ -138,6 +151,11 @@ else %low value in the region
     C_data=rangedata(2):-rangedata(3):rangedata(1);
 end
 C_data=C_data';
+if isempty(C_data)
+    errordlg('Please input an appropriate concentration range');
+    isC0=0;
+    return
+end
 %% estimate t
 ntrials=length(C_data);
 R2=zeros(ntrials,1);
@@ -156,16 +174,19 @@ for i=1:ntrials
     ek_data(i)=se(2);
     R2(i)=gof.rsquare;
 end
+paras=[C_data, x0_data, h_data, R2];
 
 % plot figure-------------------------------------
 figure
 plot(C_data, R2, '-b.');
+ylabel('R^{2}')
 yyaxis right
 plot(C_data, k_data, '-m.');
-legend({'R2','k'})
-yyaxis left
-title(['Estiamte k when x0 is fixed at ', num2str(x0)])
+ylabel('k')
+legend({'R2',['k with x0 fixed at ', num2str(x0)]})
+title('Estiamte k with no flat peak/trough in profile I-L')
 xlabel('C0')
+yyaxis left
 
 % last caculation result----------------------------
 figure
@@ -182,10 +203,7 @@ h=gca;
 ym=h.YLim;
 plot([x0,x0], ym, '--')
 hold off
-legend('raw data', ['curve fit, R2 = ', num2str(gof.rsquare)], 'x0 position');
+legend('raw data', ['curve fit, R2 = ', num2str(gof.rsquare)], ['x0 = ', num2str(x0)]);
 xlabel( 'X (m)' );
 ylabel( 'Concentration' );
-title({['last trial, C0 = ', num2str(C0)]; ...
-    ['h = ', num2str(h_data(end))]; ...
-    ['x0 = ', num2str(x0)]})
-paras=[C_data, x0_data, h_data, R2];
+title({'Curve fitting'; ['C0 = ', num2str(C0)]})

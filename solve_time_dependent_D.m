@@ -46,7 +46,8 @@ end
 multiWaitbar( 'CloseAll' );
 
 %histogram ln(t)
-figure
+normaltest=cell(1,length(k));
+figure('Name', 'ln(t) distribution when cooling')
 sp = Subplots(length(k), -1);
 for i=1:length(k)
     tp=MC_data(:,i);
@@ -59,29 +60,32 @@ for i=1:length(k)
     ylabel('Number')
     if isempty(logtp)
         spi.Title.String='No calculation result';
+        normaltest(i)={'not normal distribution'};
         continue
     end
     h=lillietest(logtp, 0.05);
     if h
-        spi.Title.String=['Trial ', num2str(i), ', Total = ', num2str(length(logtp)), ', not normal distribution'];
+        spi.Title.String=['k = ', num2str(k(i)), ', Total number = ', num2str(length(logtp)), ', not normal distribution'];
+        normaltest(i)={'not normal distribution'};
     else
-        spi.Title.String=['Trial ', num2str(i), ', Total = ', num2str(length(logtp)), ', normal distribution'];
+        spi.Title.String=['k = ', num2str(k(i)), ', Total number = ', num2str(length(logtp)), ', normal distribution'];
+        normaltest(i)={'normal distribution'};
     end
 end
 
 name1=repmat({'k='}, length(k), 1);
 name2=mat2cell_wlg(k);
-name=append(name1,name2)'; %or strcat
-title=repmat({'t(s)'}, 1, length(k));
-
+kvalue=append(name1,name2)'; %or strcat
+str1=repmat({'t(s), '}, 1, length(k));
+tstr=append(str1, normaltest);
 MC_output=num2cell(MC_data);
-try
-    dlmcell('Monte Carlo result.txt', name);
-    dlmcell('Monte Carlo result.txt', title, '-a');
-    dlmcell('Monte Carlo result.txt', MC_output, '-a');
-catch
-    filename=['Monte Carlo result_', datestr(now,'yyyy-mm-dd HH-MM-SS.FFF AM'), '.txt'];
-    dlmcell(filename, name);
-    dlmcell(filename, title, '-a');
-    dlmcell(filename, MC_output, '-a');
+
+[FileName,PathName,~] = uiputfile('*.txt','Save Monte Carlo Result','Monte Carlo Result');
+if ~FileName
+    return
 end
+outputfile=fullfile(PathName,FileName);
+dlmcell(outputfile, kvalue);
+dlmcell(outputfile, tstr, '-a');
+dlmcell(outputfile, MC_output, '-a');
+

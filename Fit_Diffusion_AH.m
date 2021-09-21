@@ -12,7 +12,7 @@ function [fitresult, gof] = Fit_Diffusion_AH(x, C, C1, C2, type, weights)
 %     C =(C2-C1)*(erfc((h+x)/k) + erfc((h-x)/k)) + C1; %Crim>Ccore
 h=(max(x)-min(x))/2;
 x0=(max(x)+min(x))/2; %initial x0 guess
-k0=1e-7; %initial k guess
+k0=0.1; %initial k guess
 
 switch type
     case 'A'
