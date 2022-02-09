@@ -310,7 +310,7 @@ end
 % 8. known C1, C2, and C3 ==============================================================
 % x0=q(1); log10(Dt)=q(2); h=q(3);
 if ~isempty(C1) && ~isempty(C2) && ~isempty(C3)
-    fun = @(q) sqrt(weights).*(f_profile8(xp,q,profiletype,C1,C2,C3)-C);
+    fun = @(q) sqrt(weights).*(f_profile8(x,q,profiletype,C1,C2,C3)-C);
     % Fit model to data.
     for g=gg
             q0 = [x0,guess+g,h0];

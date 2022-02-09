@@ -63,7 +63,7 @@ hold off
 
 if ~isempty(model_x)
     hp(1).Color='b'; hp(1).LineStyle='-';
-    legend('Data', 'Initial condition', 'Convoluted', ['Deconvoluted:', newline, 'log_{10}(Dt) = ', num2str(log10Dt), newline, 'R^{2} = ', num2str(R2)], ...
+    legend('Data', 'Initial condition', 'Convoluted', ['Deconvoluted:', newline, 'log_{10}[Dt] = ', num2str(log10Dt), newline, 'R^{2} = ', num2str(R2)], ...
         'Location','best');
     if 2*sqrt(10^log10Dt)>mean(diff(x))
         title('Curve fitting with deconvolution')
@@ -71,7 +71,7 @@ if ~isempty(model_x)
         title('Curve fitting with deconvolution: no resolvable profile')
     end
 else
-    legend('Data', 'Initial condition', ['Curve fit:', newline, 'log_{10}(Dt) = ', num2str(log10Dt), newline, 'R^{2} = ', num2str(R2)], ...
+    legend('Data', 'Initial condition', ['Curve fit:', newline, 'log_{10}[Dt] = ', num2str(log10Dt), newline, 'R^{2} = ', num2str(R2)], ...
         'Location','best');
     title('Curve fitting')
 end
