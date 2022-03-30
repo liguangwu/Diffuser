@@ -76,4 +76,4 @@ else
     title('Curve fitting')
 end
 xlabel( 'X (m)' );
-ylabel( 'Concentration' );
+ylabel( 'Composition' );

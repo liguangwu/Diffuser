@@ -147,7 +147,7 @@ if flat
         title('Curve fitting')
     end
     xlabel( 'X (m)' );
-    ylabel( 'Concentration' );
+    ylabel( 'Composition' );
 else
     plot(C_data, log10Dt, '-m.', 'MarkerSize',16);
     ylabel('log_{10}[Dt]')
@@ -157,7 +157,7 @@ else
     set(gca,'Ycolor','b')
     legend({'log_{10}[Dt]','R^{2}'})
     title('Estiamte Dt with unknown flat peak/trough in profile I-L')
-    xlabel('Assumed initial concentrations (C_{0})')
+    xlabel('Assumed initial composition (C_{0})')
     yyaxis left
     set(gca,'Ycolor','m')
 end
