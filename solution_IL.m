@@ -5,6 +5,7 @@ function [log10Dt, elog10Dt, paras, C_data] = solution_IL(x, C, C1, C2, C3, prof
 % weights=weights(I);
 if (strcmp(profiletype,'K') && (C(1)>C(end))) || (strcmp(profiletype,'L') && (C(1)<C(end)))
     x=-x;
+    model_x=-model_x;
 end
 log10Dt=[]; elog10Dt=[]; paras=[]; C_data=[];
 flat=app.AflatpeaktroughcanbeseeninprofileILCheckBox.Value;
@@ -23,6 +24,7 @@ if ~flat
     end
 end
 R2=[]; p_data=[];
+xp_all=[]; yp_all=[];
 if flat
     if isempty(model_x)
         [p, ci, C_pred, xp, yp] = Fit_Diffusion_IL(x, C, C1, C2, C3, profiletype, weights, factor);
@@ -35,6 +37,7 @@ if flat
         xp(xp<min(x))=[];
         yp(xp>max(x),:)=[];
         xp(xp>max(x))=[];
+        yp=yp'; %to row vector
     end
     sse=sum(weights.*((C-C_pred).^2));
     sst=sum(weights.*(C-mean(C)).^2);
@@ -47,9 +50,9 @@ else
     for i=1:length(C_data)
         if contains(profiletype, {'I','K'}) %high value in the region 
             if isempty(model_x)
-                 if i==1
+                if i==1
                     wb=uiprogressdlg(app.DiffuserGUI,'Title',['Modeling for C2 = ', num2str(C_data(i))], 'ShowPercentage', 'on');
-                 else
+                else
                     wb.Title=['Modeling for C2 = ', num2str(C_data(i))];
                     wb.Value=i/length(C_data);
                 end
@@ -57,6 +60,13 @@ else
             else
                 wb=uiprogressdlg(app.DiffuserGUI,'Title',['Modeling for C2 = ', num2str(C_data(i))], 'Message', 'Deconvoluting the diffusion profile','Indeterminate','on');
                 [p, ci, C_pred, yp] = deconv_IL(x, C, C1, C2(i), C3, profiletype, weights, factor, model_x, props_matrix, pmsum);
+                xp=model_x;
+                yp(xp<min(x),:)=[];
+                xp(xp<min(x))=[];
+                yp(xp>max(x),:)=[];
+                xp(xp>max(x))=[];
+                xp=[xp;xp];
+                yp=yp'; %to row vector
                 close(wb)
             end
             length_p=length(p)-length([C1, C2(i), C3]);
@@ -72,6 +82,13 @@ else
             else
                 wb=uiprogressdlg(app.DiffuserGUI,'Title',['Modeling for C1 = ', num2str(C_data(i))], 'Message', 'Deconvoluting the diffusion profile','Indeterminate','on');
                 [p, ci, C_pred, yp] = deconv_IL(x, C,  C1(i), C2, C3, profiletype, weights, factor, model_x, props_matrix, pmsum);
+                xp=model_x;
+                yp(xp<min(x),:)=[];
+                xp(xp<min(x))=[];
+                yp(xp>max(x),:)=[];
+                xp(xp>max(x))=[];
+                xp=[xp;xp];
+                yp=yp'; %to row vector
                 close(wb)
             end
             length_p=length(p)-length([C1(i), C2, C3]);
@@ -83,55 +100,71 @@ else
         log10Dt=cat(1,log10Dt,p(4));
         elog10Dt=cat(1,elog10Dt,se(4)/tinv(0.975,length(x)-length_p)*2);
         p_data=cat(1,p_data,p);
+        xp_all=cat(1,xp_all,xp);
+        yp_all=cat(1,yp_all,yp);
     end
     paras=[R2,p_data]; %paras=R2; C1; C2; x0; log10(Dt); h; C3
 end
 
 %% Plot fit with data.
 %p= C1; C2; x0; log10(Dt); h; C3
-C1=p(1); C2=p(2); x0=p(3); h=p(5);
+if ~flat
+        xp = xp_all;
+        yp = yp_all;
+        p = p_data;
+end
 if (strcmp(profiletype,'K') && (C(1)>C(end))) || (strcmp(profiletype,'L') && (C(1)<C(end)))
     x=-x;
-    x0=-x0;
+    p(:,3)=-p(:,3); %x0
     xp=-xp;
 end
+
 figure;
-if flat
-    if find(weights~=1)
-        h=errorbar(x, C, 1./sqrt(weights));
-        h.Marker='.';
-        h.MarkerSize=12;
-        h.LineStyle='none';
-        h.CapSize=0;
-    else
-        plot(x, C, 'ko')
-    end
-    hold on
-    %initial concentration----------------------------
+xlabel( 'X (m)' );
+ylabel( 'Composition' );
+%1. measured data
+if find(weights~=1)
+    he=errorbar(x, C, 1./sqrt(weights));
+    he.Marker='.';
+    he.MarkerSize=12;
+    he.LineStyle='none';
+    he.CapSize=0;
+else
+    plot(x, C, 'ko')
+end
+hold on
+%2. initial concentration----------------------------
+for i=1:size(p,1)
+    C1=p(i,1); C2=p(i,2); x0=p(i,3); h=p(i,5);
     switch profiletype
-    case 'I'
-        plot([min(x),x0-h,x0-h,x0+h,x0+h,max(x)],[C1,C1,C2,C2,C1,C1],'k--');
-    case 'J'
-        plot([min(x),x0-h,x0-h,x0+h,x0+h,max(x)],[C2,C2,C1,C1,C2,C2],'k--');
-    case 'K'
-        C3=p(6);
-        if C(1)<C(end)
-            plot([min(x),x0-h,x0-h,x0+h,x0+h,max(x)],[C1,C1,C2,C2,C3,C3],'k--');
-        else
-            plot([min(x),x0-h,x0-h,x0+h,x0+h,max(x)],[C3,C3,C2,C2,C1,C1],'k--');
-        end
-    case 'L'
-        C3=p(6);
-        if C(1)<C(end)
-            plot([min(x),x0-h,x0-h,x0+h,x0+h,max(x)],[C3,C3,C1,C1,C2,C2],'k--');
-        else
-            plot([min(x),x0-h,x0-h,x0+h,x0+h,max(x)],[C2,C2,C1,C1,C3,C3],'k--');
-        end
+        case 'I'
+            hi=plot([min(x),x0-h,x0-h,x0+h,x0+h,max(x)],[C1,C1,C2,C2,C1,C1],'k--');
+        case 'J'
+            hi=plot([min(x),x0-h,x0-h,x0+h,x0+h,max(x)],[C2,C2,C1,C1,C2,C2],'k--');
+        case 'K'
+            C3=p(i,6);
+            if C(1)<C(end)
+                hi=plot([min(x),x0-h,x0-h,x0+h,x0+h,max(x)],[C1,C1,C2,C2,C3,C3],'k--');
+            else
+                hi=plot([min(x),x0-h,x0-h,x0+h,x0+h,max(x)],[C3,C3,C2,C2,C1,C1],'k--');
+            end
+        case 'L'
+            C3=p(i,6);
+            if C(1)<C(end)
+                hi=plot([min(x),x0-h,x0-h,x0+h,x0+h,max(x)],[C3,C3,C1,C1,C2,C2],'k--');
+            else
+                hi=plot([min(x),x0-h,x0-h,x0+h,x0+h,max(x)],[C2,C2,C1,C1,C3,C3],'k--');
+            end
     end
-    %fitted curve------------------------------------
+    if i>1
+        set(get(get(hi,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
+    end
+end
+
+%3. fitted curve------------------------------------
+if flat
     hp=plot(xp, yp, 'm');
     hold off
-    
     if ~isempty(model_x)
         hp(1).Color='b'; hp(1).LineStyle='-';
         legend('Data', 'Initial condition', 'Convoluted', ['Deconvoluted:', newline, 'log_{10}[Dt] = ', num2str(log10Dt), newline, 'R^{2} = ', num2str(R2)], ...
@@ -146,9 +179,34 @@ if flat
             'Location','best');
         title('Curve fitting')
     end
-    xlabel( 'X (m)' );
-    ylabel( 'Composition' );
-else
+else % no flat peak/trough, multiple xp-yp
+    if ~isempty(model_x)
+        for i=1:2:size(xp,1)
+            hp=plot(xp(i,:), yp(i,:), 'b');
+            if i>1
+                set(get(get(hp,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
+            end
+        end
+        for i=2:2:size(xp,1)
+            hp=plot(xp(i,:), yp(i,:), 'm');
+            if i>2
+                set(get(get(hp,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
+            end
+        end
+        legend('Data', 'Initial condition', 'Convoluted', 'Deconvoluted', 'Location','best');
+    else
+        for i=1:size(xp,1)
+            hp=plot(xp(i,:), yp(i,:), 'm');
+            if i>1
+                set(get(get(hp,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
+            end
+        end
+        legend('Data', 'Initial condition', 'Curve fit', 'Location','best');
+        title('Curve fitting')
+    end
+    hold off
+    %4. no flat peak/trough, also plot R2 for each C------------
+    figure
     plot(C_data, log10Dt, '-m.', 'MarkerSize',16);
     ylabel('log_{10}[Dt]')
     yyaxis right
